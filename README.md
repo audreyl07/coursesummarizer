@@ -6,8 +6,6 @@ Coursework Summarizer is an AI-powered tool that helps students quickly digest a
 
 ---
 
-## Backend (`original.py`)
-
 ### Purpose
 
 - Accepts a PDF file path.
