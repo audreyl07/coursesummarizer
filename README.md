@@ -41,8 +41,6 @@ python original.py
 
 ---
 
-## Frontend (`frontend`)
-
 ### Purpose
 
 - Provides a student-friendly web interface using Streamlit.
