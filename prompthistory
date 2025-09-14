@@ -1,0 +1,26 @@
+# Prompt History for Coursework Summarizer
+
+## Summarization Prompt
+
+"""
+Summarize the following document, for each new heading:
+- If there are code examples, format them as code blocks with clear but detailed code with correct syntax and clear indentation.
+- If there are images, graphs or plots, describe the content, purpose and relevance to the specific topic. If there is a link, then list it in the document.
+
+{text}
+"""
+
+## User Interaction Prompts
+
+- Enter the path to a PDF, or TXT to summarize and append (or type 'stop' to finish):
+- Create a new PDF for this summary? (y/n):
+- Allowing to generate name for the summarized document 
+- Stopping document summarization and appending.
+- Summary saved to {filename}
+- Combined summary saved to {output_pdf}
+- This summary already exists in the document. Skipping append.
+- [ERROR]: {e}
+
+---
+
+All prompts above are used in the current version of the summarizer for user interaction and LLM summarization.
