@@ -1,86 +1,81 @@
-# Coursework Summarizer Documentation
+
+# Coursework Summarizer
 
 ## Overview
 
-Coursework Summarizer is an AI-powered tool that helps students quickly digest and understand PDF coursework documents. It consists of a backend (summarization engine) and a frontend (Streamlit web app) for easy interaction.
+Coursework Summarizer is an AI-powered tool for summarizing and organizing large academic documents (PDF, TXT, DOCX). It uses LLMs and clustering to generate clear, topic-based summaries, and offers flexible options for saving and managing summary PDFs.
 
 ---
 
-### Purpose
+## Features
 
-- Accepts a PDF file path.
-- Extracts and chunks the text.
-- Clusters document chunks using embeddings.
-- Summarizes the clustered content using an LLM (Ollama).
-- Appends each summary to a combined PDF file.
+- Accepts PDF, TXT, and DOCX files for summarization.
+- Extracts, chunks, and clusters document content using embeddings.
+- Summarizes each cluster using an LLM (Ollama) with a custom prompt that preserves code and image/graph context.
+- Interactive terminal workflow: choose to create a new PDF, append to an existing PDF, or skip saving.
+- Optionally delete generated summaries or clear them from the terminal.
+- Prevents duplicate summaries and repeated content.
 
-### Main Components
+---
 
-- **PDF Extraction:** Uses `PyPDFLoader` and `RecursiveCharacterTextSplitter` to extract and split text.
-- **Clustering:** Uses `EmbeddingsClusteringFilter` with HuggingFace embeddings.
-- **Summarization:** Uses `OllamaLLM` and a custom prompt for code and syntax examples.
-- **PDF Output:** Uses `FPDF` to save and append summaries.
+## Usage (Terminal)
 
-### Usage
+Run the summarizer interactively:
 
-Run interactively in the terminal:
-```
+```sh
 python original.py
 ```
-- Enter the path to each PDF when prompted.
-- Type `stop` to end the session.
-- Summaries are saved/combined in `summary_output.pdf`.
 
-### Key Functions
+**Workflow:**
 
-- `extract(file_path)`: Extracts and splits PDF text.
-- `summarize_document_with_kmeans_clustering(file, llm, embeddings)`: Clusters and summarizes a PDF.
-- `append_summary_to_pdf(pdf_path, new_summary, output_pdf)`: Appends a new summary to an existing PDF.
-
----
-
-### Purpose
-
-- Provides a student-friendly web interface using Streamlit.
-- Allows users to upload a PDF or enter a file path.
-- Lets users adjust chunk size and number of clusters for summary detail.
-- Connects to the backend API for summarization.
-- Displays the summary in bullet points.
-
-### Main Components
-
-- **PDF Input:** Accepts file upload or path input.
-- **Parameter Controls:** Users can set chunk size and cluster count.
-- **API Connection:** Sends requests to the backend API (`/summarize` endpoint).
-- **Summary Display:** Shows the summary as bullet points.
-
-### Usage
-
-Start the frontend:
-```
-streamlit run frontend
-```
-- Enter a PDF path or upload a PDF.
-- Adjust chunk size and cluster count as needed.
-- Click "Summarize Coursework" to get results.
-
-### API Requirements
-
-Backend should be running as an API server (e.g., FastAPI or Flask) with a `/summarize` endpoint that accepts:
-- `pdf_path` (str)
-- `chunk_size` (int)
-- `num_clusters` (int)
-- or a PDF file upload
+1. Enter the path to a PDF, TXT, or DOCX file when prompted.
+2. Review the summary in the terminal (optionally clear it).
+3. Choose where to save the summary:
+	- Create a new PDF (with your chosen filename)
+	- Append to the default combined PDF
+	- Append to another existing PDF
+	- Do not save the summary
+4. If you create a new PDF, you can immediately delete it if not needed.
+5. Type `stop` to end the session.
 
 ---
 
-## Example Workflow
+## Key Functions
 
-1. Start backend API server (see FastAPI example in previous responses).
-2. Start frontend Streamlit app.
-3. Upload or enter PDF path in the web app.
-4. Adjust parameters and click "Summarize Coursework".
-5. View and download summaries.
+- `extract(file_path)`: Extracts and splits document text, extracts code blocks and image/graph references.
+- `summarize_document_with_kmeans_clustering(file, llm, embeddings)`: Clusters and summarizes a document, preserving code and image/graph context.
+- `append_summary_to_pdf(pdf_path, new_summary, output_pdf)`: Appends a new summary to an existing PDF, avoiding repetition.
+
+---
+
+## Customization
+
+- **Chunk Size & Clusters:** Chunk size and number of clusters are set in the code for large documents, but can be easily exposed as user inputs for further tuning.
+- **Supported Formats:** PDF, TXT, DOCX (add more by extending the `extract` function).
+- **Prompt:** The summarization prompt is designed to preserve code formatting and describe images/graphs.
+
+---
+
+## Example Terminal Session
+
+```
+Enter the path to a PDF, or TXT to summarize and append (or type 'stop' to finish): mytextbook.pdf
+
+===== DOCUMENT SUMMARY =====
+...summary output...
+============================
+
+Do you want to clear the newly summarized material from the terminal? (y/n): n
+Where would you like to save this summary?
+1. Create a new PDF for this summary
+2. Append to the default combined PDF
+3. Append to another existing PDF
+4. Do not save this summary
+Enter 1, 2, 3, or 4: 1
+Enter the filename for the summary PDF (with .pdf extension): mytextbook_summary.pdf
+Summary saved to mytextbook_summary.pdf
+Do you want to delete the summary PDF 'mytextbook_summary.pdf'? (y/n): n
+```
 
 ---
 
@@ -90,12 +85,12 @@ Backend should be running as an API server (e.g., FastAPI or Flask) with a `/sum
 - [LangChain](https://github.com/langchain-ai/langchain)
 - [Ollama](https://github.com/ollama/ollama)
 - [FPDF](https://github.com/reingart/pyfpdf)
-- [Streamlit](https://github.com/streamlit/streamlit)
 - [PyPDFLoader](https://github.com/langchain-ai/langchain)
 - [HuggingFace Transformers](https://github.com/huggingface/transformers)
 
 Install with:
-```
+
+```sh
 pip install langchain langchain-community langchain-ollama langchain-huggingface fpdf streamlit requests
 ```
 
@@ -103,9 +98,9 @@ pip install langchain langchain-community langchain-ollama langchain-huggingface
 
 ## Contributing
 
-- Fork the repository.
-- Create a feature branch.
-- Submit a pull request with clear documentation and test cases.
+1. Fork the repository.
+2. Create a feature branch.
+3. Submit a pull request with clear documentation and test cases.
 
 ---
 
