@@ -1,4 +1,5 @@
 
+
 # Coursework Summarizer
 
 ## Overview
@@ -10,7 +11,7 @@ Coursework Summarizer is an AI-powered tool for summarizing and organizing large
 ## Features
 
 - Accepts PDF, TXT, and DOCX files for summarization.
-- Extracts, chunks, and clusters document content using embeddings.
+- Extracts, chunks, and clusters document content using HuggingFace embeddings.
 - Summarizes each cluster using an LLM (Ollama) with a custom prompt that preserves code and image/graph context.
 - Interactive terminal workflow: choose to create a new PDF, append to an existing PDF, or skip saving.
 - Optionally delete generated summaries or clear them from the terminal.
@@ -40,11 +41,12 @@ python original.py
 
 ---
 
-## Key Functions
+**Key Functions:**
 
 - `extract(file_path)`: Extracts and splits document text, extracts code blocks and image/graph references.
 - `summarize_document_with_kmeans_clustering(file, llm, embeddings)`: Clusters and summarizes a document, preserving code and image/graph context.
 - `append_summary_to_pdf(pdf_path, new_summary, output_pdf)`: Appends a new summary to an existing PDF, avoiding repetition.
+- `get_title(text)`: Extracts the first non-empty line as the document title.
 
 ---
 
@@ -65,7 +67,6 @@ Enter the path to a PDF, or TXT to summarize and append (or type 'stop' to finis
 ...summary output...
 ============================
 
-Do you want to clear the newly summarized material from the terminal? (y/n): n
 Where would you like to save this summary?
 1. Create a new PDF for this summary
 2. Append to the default combined PDF
@@ -75,9 +76,8 @@ Enter 1, 2, 3, or 4: 1
 Enter the filename for the summary PDF (with .pdf extension): mytextbook_summary.pdf
 Summary saved to mytextbook_summary.pdf
 Do you want to delete the summary PDF 'mytextbook_summary.pdf'? (y/n): n
+Do you want to clear the newly summarized material from the terminal? (y/n): n
 ```
-
----
 
 ## Dependencies
 
@@ -88,10 +88,10 @@ Do you want to delete the summary PDF 'mytextbook_summary.pdf'? (y/n): n
 - [PyPDFLoader](https://github.com/langchain-ai/langchain)
 - [HuggingFace Transformers](https://github.com/huggingface/transformers)
 
-Install with:
+Install all dependencies with:
 
 ```sh
-pip install langchain langchain-community langchain-ollama langchain-huggingface fpdf streamlit requests
+pip install langchain langchain-community langchain-ollama langchain-huggingface fpdf streamlit requests pdfplumber
 ```
 
 ---
