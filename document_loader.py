@@ -16,10 +16,12 @@ def extract_code_and_images(text, ext):
         pass
     return code_blocks, images
 
-def extract(file_path, chunk_size=2000, chunk_overlap=20):
+
+def extract(file_path, chunk_size=2000, chunk_overlap=20, save_loaded=False, save_path=None):
     """
     Extracts and splits text from a file (PDF, TXT, DOCX) into manageable chunks for summarization.
     Also extracts code blocks and image/graph references for inclusion in summary metadata.
+    Optionally saves the loaded document text to a file for reuse.
     """
     ext = os.path.splitext(file_path)[1].lower()
     if ext == ".pdf":
@@ -36,6 +38,15 @@ def extract(file_path, chunk_size=2000, chunk_overlap=20):
         text_content = " ".join([p.page_content for p in pages])
     else:
         raise ValueError(f"Unsupported file type: {ext}. Supported types: .pdf, .txt, .docx")
+
+    if save_loaded:
+        # Save the loaded document text to a file for reuse
+        if not save_path:
+            base_name = os.path.basename(file_path)
+            file_name_without_ext = os.path.splitext(base_name)[0]
+            save_path = f"{file_name_without_ext}_loaded.txt"
+        with open(save_path, "w", encoding="utf-8") as f:
+            f.write(text_content)
 
     code_blocks, images = extract_code_and_images(text_content, ext)
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
