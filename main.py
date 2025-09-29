@@ -1,59 +1,107 @@
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
-from document_loader import extract
+from document_loader import extract, extract_content_by_type
+from pdf_manager import append_summary_to_pdf, get_title
 from summarizer import summarize_document_with_kmeans_clustering, cross_check_summary, get_llm
-from pdf_manager import append_summary_to_pdf
+from model_collaborator import ModelCollaborator
+from document_categorizer import categorize_chunks, categorize_chunk_model
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
 # === FastAPI App Setup ===
 app = FastAPI()
-
-# Enable CORS for Postman and other clients
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for testing
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# === Helper Function for API Key ===
+def set_api_key(env_var: str, api_key: str):
+    """
+    Sets a single API key as an environment variable.
+    """
+    if env_var and api_key:
+        os.environ[env_var] = api_key
+
+def set_api_keys(api_keys: dict):
+    """
+    Sets multiple API keys from a dictionary of environment variable names and values.
+    """
+    if api_keys:
+        for env_var, api_key in api_keys.items():
+            if env_var and api_key:
+                os.environ[env_var] = api_key
+
+# === Document Loader Endpoint ===
+class DocumentLoaderRequest(BaseModel):
+    file_path: str
+    chunk_size: int = 2000
+    chunk_overlap: int = 20
+    save_loaded: bool = False
+    save_path: str = None
+    api_key: str = None  # API key for document loader
+    api_key_env: str = "DOCUMENT_LOADER_API_KEY"  # Environment variable name
+
+@app.post("/document_loader/")
+def document_loader_endpoint(req: DocumentLoaderRequest):
+    set_api_key(req.api_key_env, req.api_key)
+    texts = extract(
+        req.file_path,
+        chunk_size=req.chunk_size,
+        chunk_overlap=req.chunk_overlap,
+        save_loaded=req.save_loaded,
+        save_path=req.save_path
+    )
+    return {"chunks": [doc.page_content for doc in texts], "metadata": [doc.metadata for doc in texts]}
+
+# === PDF Manager Endpoint ===
+class PDFManagerRequest(BaseModel):
+    pdf_path: str
+    new_summary: str
+    output_pdf: str = "summary_output.pdf"
+    api_key: str = None  # API key for PDF manager
+    api_key_env: str = "PDF_MANAGER_API_KEY"  # Environment variable name
+
+@app.post("/pdf_manager/")
+def pdf_manager_endpoint(req: PDFManagerRequest):
+    set_api_key(req.api_key_env, req.api_key)
+    append_summary_to_pdf(req.pdf_path, req.new_summary, req.output_pdf)
+    return {"output_pdf": req.output_pdf}
+
+# === Summarizer Endpoint ===
 class SummarizeRequest(BaseModel):
-    """
-    Request model for the /summarize/ API endpoint.
-    Allows user to specify file path, chunking parameters, model, accuracy check, and API keys.
-    """
     file_path: str
     chunk_size: int = 2000
     chunk_overlap: int = 20
     num_clusters: int = 20
-    model: str = "gpt"  # Default model for categorization
+    model: str = "gpt"
     check_accuracy: bool = False
-    api_keys: dict = None  # Optional dict for API keys
+    api_keys: dict = None  # Dictionary of API keys
 
 class SummarizeResponse(BaseModel):
-    """
-    Response model for the /summarize/ API endpoint.
-    Returns summary status, file paths, and optional accuracy report.
-    """
     message: str
-    loaded_document: str
-    pdf_output: str
-    accuracy_report: dict = None
+    loaded_document: str = None
+    pdf_output: str = None
+    accuracy_report: str = None
 
-# === Helper Functions ===
-def set_api_keys(api_keys: dict):
-    """
-    Sets API keys for LLMs as environment variables.
-    Args:
-        api_keys: Dictionary of environment variable names and values.
-    """
-    if not api_keys:
-        return
-    for key, value in api_keys.items():
-        os.environ[key] = value
+@app.post("/summarizer/")
+def summarizer_endpoint(req: SummarizeRequest):
+    set_api_key("SUMMARIZER_API_KEY", req.api_keys.get("SUMMARIZER_API_KEY") if req.api_keys else None)
+    llm = get_llm(req.model)
+    embeddings = HuggingFaceEmbeddings()
+    texts = extract(req.file_path, chunk_size=req.chunk_size, chunk_overlap=req.chunk_overlap)
+    summary = summarize_document_with_kmeans_clustering(texts, embeddings, num_clusters=req.num_clusters)
+    accuracy_report = None
+    if req.check_accuracy:
+        with open(req.file_path, "r", encoding="utf-8") as f:
+            source_text = f.read()
+        accuracy_report = cross_check_summary(summary, source_text)
+    return {"summary": summary, "accuracy_report": accuracy_report}
 
 # === API Endpoint ===
 @app.post("/summarize/", response_model=SummarizeResponse)
