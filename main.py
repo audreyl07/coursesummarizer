@@ -92,9 +92,10 @@ def summarize_and_save_endpoint(req: SummarizeAndSaveRequest):
 # Endpoint for summarizing documents using the DeepSeek LLM model
 class SummarizeDeepSeekRequest(BaseModel):
     file_path: str
+    model: str = "deepseek-r1"
     num_clusters: int = 20
     output_file: str | None = None
-
+    
 class SummarizeDeepSeekResponse(BaseModel):
     summary: str
     output_file: str
@@ -112,7 +113,7 @@ def summarize_deepseek_endpoint(req: SummarizeDeepSeekRequest):
 
         from langchain_deepseek import ChatDeepSeek
         from langchain_huggingface import HuggingFaceEmbeddings
-        llm = ChatDeepSeek(model="deepseek-llm", temperature=0)
+        llm = ChatDeepSeek(model="deepseek-r1", temperature=0)
         embeddings = HuggingFaceEmbeddings()
 
         print(f"[DEBUG] Requested file path: {req.file_path}")
