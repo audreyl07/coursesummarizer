@@ -61,7 +61,7 @@ def extract(file_path):
     code_blocks, images = extract_code_and_images(text_content, ext)
 
     # Split document into chunks for LLM processing
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=0)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=200)
     texts = text_splitter.split_documents(pages)
     # Attach code_blocks and images as metadata for later use
     for doc in texts:
@@ -77,7 +77,7 @@ def summarize_document_with_kmeans_clustering(file, llm, embeddings):
     Cluster document chunks using embeddings, then summarize each cluster using an LLM.
     Includes code and image/graph examples in the summary output.
     """
-    filter = EmbeddingsClusteringFilter(embeddings=embeddings, num_clusters=20)
+    filter = EmbeddingsClusteringFilter(embeddings=embeddings, num_clusters=50)
     texts = extract(file)
     try:
         filtered_docs = filter.transform_documents(documents=texts)
