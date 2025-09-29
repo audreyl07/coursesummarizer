@@ -2,6 +2,7 @@ from langchain_community.document_transformers import EmbeddingsClusteringFilter
 from langchain_core.documents import Document
 from document_categorizer import categorize_chunks
 from model_collaborator import ModelCollaborator
+import os
 
 
 def get_llm(model_name="ollama"):
@@ -129,3 +130,28 @@ def cross_check_summary(summary: str, source_text: str) -> dict:
         report["confidence"] = 0.0
 
     return report
+
+
+def summarize_saved_text_file(txt_path: str, model_name: str = "gpt", num_clusters: int = 20) -> str:
+    """
+    Summarize the content of a saved text document using the selected LLM model.
+    Args:
+        txt_path: Path to the saved text file.
+        model_name: Which LLM model to use (default: 'gpt').
+        num_clusters: Number of clusters for summarization (default: 20).
+    Returns:
+        The summary string.
+    """
+    if not os.path.exists(txt_path):
+        return f"Error: File '{txt_path}' not found."
+    with open(txt_path, "r", encoding="utf-8") as f:
+        text_content = f.read()
+    llm = get_llm(model_name)
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+    embeddings = HuggingFaceEmbeddings()
+    # Create a single Document object for the whole text
+    from langchain_core.documents import Document
+    doc = Document(page_content=text_content)
+    # Use the existing summarization pipeline
+    summary = summarize_document_with_kmeans_clustering([doc], embeddings, num_clusters=num_clusters)
+    return summary

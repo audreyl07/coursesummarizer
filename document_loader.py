@@ -112,36 +112,36 @@ class ContentExtractor:
             general_text=general_text
         )
 
-def extract_content_by_type(text: str, ext: str) -> ExtractedContent:
-    """
-    Extract different types of content from text.
-    Supports code blocks, mathematical expressions, graphs, tables, and equations.
+# def extract_content_by_type(text: str, ext: str) -> ExtractedContent:
+#     """
+#     Extract different types of content from text.
+#     Supports code blocks, mathematical expressions, graphs, tables, and equations.
     
-    Args:
-        text: The text content to analyze
-        ext: The file extension to determine parsing strategy
-    Returns:
-        ExtractedContent object containing all extracted content
-    """
-    extractor = ContentExtractor()
+#     Args:
+#         text: The text content to analyze
+#         ext: The file extension to determine parsing strategy
+#     Returns:
+#         ExtractedContent object containing all extracted content
+#     """
+#     extractor = ContentExtractor()
     
-    # Extract content based on file type
-    if ext.lower() in [".txt", ".md"]:
-        # Full extraction for text and markdown files
-        return extractor.extract_content(text)
-    elif ext.lower() == ".pdf":
-        # PDF specific extraction (might need special handling for math/equations)
-        content = extractor.extract_content(text)
-        # Add PDF-specific extraction logic here if needed
-        return content
-    elif ext.lower() == ".docx":
-        # DOCX specific extraction
-        content = extractor.extract_content(text)
-        # Add DOCX-specific extraction logic here if needed
-        return content
-    else:
-        # Default extraction for unknown file types
-        return extractor.extract_content(text)
+#     # Extract content based on file type
+#     if ext.lower() in [".txt", ".md"]:
+#         # Full extraction for text and markdown files
+#         return extractor.extract_content(text)
+#     elif ext.lower() == ".pdf":
+#         # PDF specific extraction (might need special handling for math/equations)
+#         content = extractor.extract_content(text)
+#         # Add PDF-specific extraction logic here if needed
+#         return content
+#     elif ext.lower() == ".docx":
+#         # DOCX specific extraction
+#         content = extractor.extract_content(text)
+#         # Add DOCX-specific extraction logic here if needed
+#         return content
+#     else:
+#         # Default extraction for unknown file types
+#         return extractor.extract_content(text)
 
 
 def extract(file_path, chunk_size=2000, chunk_overlap=20, save_loaded=False, save_path=None):
@@ -166,57 +166,54 @@ def extract(file_path, chunk_size=2000, chunk_overlap=20, save_loaded=False, sav
     else:
         raise ValueError(f"Unsupported file type: {ext}. Supported types: .pdf, .txt, .docx")
 
-    if save_loaded:
-        # Save the loaded document text to a file for reuse
-        if not save_path:
-            base_name = os.path.basename(file_path)
-            file_name_without_ext = os.path.splitext(base_name)[0]
-            save_path = f"{file_name_without_ext}_loaded.txt"
-        with open(save_path, "w", encoding="utf-8") as f:
-            f.write(text_content)
+    # if save_loaded:
+    #     # Save the loaded document text to a file for reuse
+    #     if not save_path:
+    #         base_name = os.path.basename(file_path)
+    #         file_name_without_ext = os.path.splitext(base_name)[0]
+    #         save_path = f"{file_name_without_ext}_loaded.txt"
+    #     with open(save_path, "w", encoding="utf-8") as f:
+    #         f.write(text_content)
+    
+    return text_content
 
     # Extract all content types
-    extracted_content = extract_content_by_type(text_content, ext)
+    # extracted_content = extract_content_by_type(text_content, ext)
     
-    # Split text while preserving special content
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    texts = text_splitter.split_documents(pages)
+    # # Split text while preserving special content
+    # text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    # texts = text_splitter.split_documents(pages)
     
-    # Attach extracted content as metadata
-    for doc in texts:
-        doc.metadata["code_blocks"] = [(lang, code) for lang, code in extracted_content.code_blocks]
-        doc.metadata["math_expressions"] = extracted_content.math_expressions
-        doc.metadata["graph_references"] = extracted_content.graph_references
-        doc.metadata["tables"] = extracted_content.tables
-        doc.metadata["equations"] = extracted_content.equations
+    # # Attach extracted content as metadata
+    # for doc in texts:
+    #     doc.metadata["code_blocks"] = [(lang, code) for lang, code in extracted_content.code_blocks]
+    #     doc.metadata["math_expressions"] = extracted_content.math_expressions
+    #     doc.metadata["graph_references"] = extracted_content.graph_references
+    #     doc.metadata["tables"] = extracted_content.tables
+    #     doc.metadata["equations"] = extracted_content.equations
         
-        # Store content type hints for the categorizer
-        doc.metadata["content_types"] = {
-            "has_code": bool(extracted_content.code_blocks),
-            "has_math": bool(extracted_content.math_expressions or extracted_content.equations),
-            "has_graphs": bool(extracted_content.graph_references),
-            "has_tables": bool(extracted_content.tables)
-        }
+    #     # Store content type hints for the categorizer
+    #     doc.metadata["content_types"] = {
+    #         "has_code": bool(extracted_content.code_blocks),
+    #         "has_math": bool(extracted_content.math_expressions or extracted_content.equations),
+    #         "has_graphs": bool(extracted_content.graph_references),
+    #         "has_tables": bool(extracted_content.tables)
+    #     }
     
-    return texts
+    # return texts
 
-def save_loaded_document(content: str, output_path: str, file_format: str = "txt"):
-    """
-    Save the loaded document content to a PDF or TXT file.
-    Args:
-        content: The text content to save.
-        output_path: The path to the output file.
-        file_format: 'pdf' or 'txt'. Defaults to 'txt'.
-    """
-    if file_format.lower() == "pdf":
-        from fpdf import FPDF
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.set_font("Times", size=12)
-        for line in content.split('\n'):
-            pdf.multi_cell(0, 10, line)
-        pdf.output(output_path)
-    else:
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(content)
+def save_text_to_file(text: str, input_file: str):
+    # base_name = os.path.basename(input_file)
+    # filename_without_extension = os.path.splitext(base_name)[0]    
+    # print(filename_without_extension)
+    with open(input_file, "w", encoding="utf-8") as f:
+        f.write(text)
+
+
+# # For direct testing
+# try:
+#     file_path = "/Users/admin/ws-2024/coursesummarizer/documents/COMP2401_Ch1_SystemsProgramming.pdf" 
+#     texts = extract(file_path)
+#     save_text_to_file(texts, file_path)
+# except Exception as e:
+#     print(f"[ERROR]: {e}")
