@@ -143,12 +143,10 @@ def extract_content_by_type(text: str, ext: str) -> ExtractedContent:
         # Default extraction for unknown file types
         return extractor.extract_content(text)
 
-
-def extract(file_path, chunk_size=2000, chunk_overlap=20, save_loaded=False, save_path=None):
+def extract(file_path, chunk_size=2000, chunk_overlap=20):
     """
     Extracts and splits text from a file (PDF, TXT, DOCX) into manageable chunks for summarization.
     Also extracts code blocks and image/graph references for inclusion in summary metadata.
-    Optionally saves the loaded document text to a file for reuse.
     """
     ext = os.path.splitext(file_path)[1].lower()
     if ext == ".pdf":
@@ -166,6 +164,7 @@ def extract(file_path, chunk_size=2000, chunk_overlap=20, save_loaded=False, sav
     else:
         raise ValueError(f"Unsupported file type: {ext}. Supported types: .pdf, .txt, .docx")
 
+<<<<<<< HEAD
     if save_loaded:
         # Save the loaded document text to a file for reuse
         if not save_path:
@@ -179,6 +178,9 @@ def extract(file_path, chunk_size=2000, chunk_overlap=20, save_loaded=False, sav
     extracted_content = extract_content_by_type(text_content, ext)
     
     # Split text while preserving special content
+=======
+    code_blocks, images = extract_code_and_images(text_content, ext)
+>>>>>>> parent of 5e6b5a3 (collabaration between multiple models)
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     texts = text_splitter.split_documents(pages)
     
