@@ -11,5 +11,3 @@ split it into different parts so the code is more optimized
 
 - create one for POST each one of the files and then combine them using postman  
 - remove all the extra details and just append the file into a pdf 
-
-1. chunk, call the LLM to categorzie the chunk -> something to store and categorize what each chunk 
