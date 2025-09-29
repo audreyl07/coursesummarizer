@@ -92,7 +92,7 @@ def summarize_and_save_endpoint(req: SummarizeAndSaveRequest):
 # Endpoint for summarizing documents using the DeepSeek LLM model
 class SummarizeDeepSeekRequest(BaseModel):
     file_path: str
-    model: str = "deepseek-r1"
+    model: str = "deepseek-chat"
     num_clusters: int = 20
     output_file: str | None = None
     
@@ -103,17 +103,20 @@ class SummarizeDeepSeekResponse(BaseModel):
 @app.post("/summarize_deepseek/", response_model=SummarizeDeepSeekResponse)
 def summarize_deepseek_endpoint(req: SummarizeDeepSeekRequest):
     try:
-        # Load .env file if DEEPSEEK_API_KEY is not set
-        if not os.getenv("DEEPSEEK_API_KEY"):
-            load_dotenv()
-        api_key = os.getenv("DEEPSEEK_API_KEY")
-        if not api_key:
-            raise HTTPException(status_code=500, detail="DEEPSEEK_API_KEY environment variable is not set. Please set it in your shell or .env file.")
-        os.environ["DEEPSEEK_API_KEY"] = api_key
+        # # Load .env file if DEEPSEEK_API_KEY is not set
+        # if not os.getenv("DEEPSEEK_API_KEY"):
+        #     from dotenv import load_dotenv
+        #     load_dotenv()
+        # api_key = os.getenv("DEEPSEEK_API_KEY")
+        # if not api_key:
+        #     raise HTTPException(status_code=500, detail="DEEPSEEK_API_KEY environment variable is not set. Please set it in your shell or .env file.")
+        # os.environ["DEEPSEEK_API_KEY"] = api_key
 
-        from langchain_deepseek import ChatDeepSeek
+    
+        # Use Ollama-style initialization for DeepSeek r-1
+        from langchain_ollama import OllamaLLM
         from langchain_huggingface import HuggingFaceEmbeddings
-        llm = ChatDeepSeek(model="deepseek-r1", temperature=0)
+        llm = OllamaLLM(model="deepseek-r1", temperature=0)
         embeddings = HuggingFaceEmbeddings()
 
         print(f"[DEBUG] Requested file path: {req.file_path}")
