@@ -47,7 +47,6 @@ Summarize the following document, for each new heading:
         appendix += "\n\n=== Image/Graph References ===\n"
         for idx, img in enumerate(all_images, 1):
             appendix += f"Image/Graph {idx}: {img}\n"
-<<<<<<< HEAD
     
     return summary + appendix
 
@@ -114,6 +113,3 @@ def cross_check_summary(summary: str, source_text: str) -> dict:
         report["confidence"] = 0.0
 
     return report
-=======
-    return summary_text + appendix
->>>>>>> parent of 5e6b5a3 (collabaration between multiple models)

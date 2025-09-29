@@ -1,24 +1,16 @@
-<<<<<<< HEAD
 import os
-=======
->>>>>>> parent of 5e6b5a3 (collabaration between multiple models)
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
-<<<<<<< HEAD
 from document_loader import extract
 from summarizer import summarize_document_with_kmeans_clustering, cross_check_summary, get_llm
 from pdf_manager import append_summary_to_pdf
 from langchain_community.embeddings import HuggingFaceEmbeddings
-=======
-import document_loader, summarizer, pdf_manager
->>>>>>> parent of 5e6b5a3 (collabaration between multiple models)
 
 # === FastAPI App Setup ===
 app = FastAPI()
 
-<<<<<<< HEAD
 # Enable CORS for Postman and other clients
 app.add_middleware(
     CORSMiddleware,
@@ -156,42 +148,6 @@ def main():
             source_text = f.read()
         report = cross_check_summary(summary, source_text)
         print("Accuracy Report:", report)
-=======
-class Info(BaseModel):
-    filename: str
-
-class Item(BaseModel):
-    name: str
-    description: str | None = None
-    price: float
-    tax: float | None = None
-
-@app.post("/items/")
-def create_item(item: Item):
-    if item.price < 0:
-        raise HTTPException(status_code=400, detail="Price must be non-negative")
-    data = item.dict()
-    if item.tax is not None:
-        data["total_price"] = item.price + item.tax
-    return data
-
-@app.post("/extract-pdf/")
-def extract_pdf(info: Info):
-    try:
-        text = document_loader(info.filename)
-        # Step 1: Get "COMP2401_Ch1_SystemsProgramming.pdf"
-        base_name = os.path.basename(info.filename)
-
-        # Step 2: Split into ("COMP2401_Ch1_SystemsProgramming", ".pdf") and take [0]
-        file_name_without_ext = os.path.splitext(base_name)[0]
-
-        print(text)
-        summarizer(text, file_name_without_ext + ".txt")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    data = info.dict()
-    return data
->>>>>>> parent of 5e6b5a3 (collabaration between multiple models)
 
 # === Entry Point ===
 if __name__ == "__main__":

@@ -164,7 +164,6 @@ def extract(file_path, chunk_size=2000, chunk_overlap=20):
     else:
         raise ValueError(f"Unsupported file type: {ext}. Supported types: .pdf, .txt, .docx")
 
-<<<<<<< HEAD
     if save_loaded:
         # Save the loaded document text to a file for reuse
         if not save_path:
@@ -178,9 +177,7 @@ def extract(file_path, chunk_size=2000, chunk_overlap=20):
     extracted_content = extract_content_by_type(text_content, ext)
     
     # Split text while preserving special content
-=======
     code_blocks, images = extract_code_and_images(text_content, ext)
->>>>>>> parent of 5e6b5a3 (collabaration between multiple models)
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     texts = text_splitter.split_documents(pages)
     
