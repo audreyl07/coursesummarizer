@@ -29,6 +29,7 @@ Summarize the following document. For each section or heading:
 - **Text:** Clearly explain the main concepts, arguments, and supporting details. Make connections between ideas and provide context for understanding.
 - **General Text:** Synthesize any other information, ensuring clarity and completeness. Integrate code, math, and visual elements into the overall summary for a cohesive understanding.
 - Use clear, concise language and avoid unnecessary repetition.
+- **IMPORTANT:** Only use English in your output and ensure all sentences are grammatically correct and well-structured.
 
 \n\n{text}
 """

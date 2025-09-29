@@ -103,20 +103,10 @@ class SummarizeDeepSeekResponse(BaseModel):
 @app.post("/summarize_deepseek/", response_model=SummarizeDeepSeekResponse)
 def summarize_deepseek_endpoint(req: SummarizeDeepSeekRequest):
     try:
-        # # Load .env file if DEEPSEEK_API_KEY is not set
-        # if not os.getenv("DEEPSEEK_API_KEY"):
-        #     from dotenv import load_dotenv
-        #     load_dotenv()
-        # api_key = os.getenv("DEEPSEEK_API_KEY")
-        # if not api_key:
-        #     raise HTTPException(status_code=500, detail="DEEPSEEK_API_KEY environment variable is not set. Please set it in your shell or .env file.")
-        # os.environ["DEEPSEEK_API_KEY"] = api_key
-
-    
         # Use Ollama-style initialization for DeepSeek r-1
         from langchain_ollama import OllamaLLM
         from langchain_huggingface import HuggingFaceEmbeddings
-        llm = OllamaLLM(model="deepseek-r1", temperature=0)
+        llm = OllamaLLM(model="deepseek-v2", temperature=0)
         embeddings = HuggingFaceEmbeddings()
 
         print(f"[DEBUG] Requested file path: {req.file_path}")
@@ -137,6 +127,47 @@ def summarize_deepseek_endpoint(req: SummarizeDeepSeekRequest):
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_deepseek_endpoint: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Generic endpoint for summarizing documents with any LLM model
+class SummarizeLLMRequest(BaseModel):
+    file_path: str
+    model: str
+    num_clusters: int = 20
+    output_file: str | None = None
+
+class SummarizeLLMResponse(BaseModel):
+    summary: str
+    output_file: str
+
+@app.post("/summarize_llm/", response_model=SummarizeLLMResponse)
+def summarize_llm_endpoint(req: SummarizeLLMRequest):
+    try:
+        # Dynamically select LLM class based on model name
+        if req.model.startswith("deepseek"):
+            from langchain_ollama import OllamaLLM
+            llm = OllamaLLM(model=req.model, temperature=0)
+        from langchain_huggingface import HuggingFaceEmbeddings
+        embeddings = HuggingFaceEmbeddings()
+
+        print(f"[DEBUG] Requested file path: {req.file_path}")
+        texts = extract(req.file_path)
+        print(f"[DEBUG] Extracted text chunks: {len(texts)}")
+
+        summary = summarize_document_with_kmeans_clustering(texts, llm, embeddings, num_clusters=req.num_clusters)
+        print(f"[DEBUG] Summary length: {len(summary)}")
+
+        base_name = os.path.basename(req.file_path)
+        file_name_without_ext = os.path.splitext(base_name)[0]
+        output_file = req.output_file or f"{file_name_without_ext}_{req.model}_summary.txt"
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(summary)
+
+        return SummarizeLLMResponse(summary=summary, output_file=output_file)
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] Exception in summarize_llm_endpoint: {e}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
