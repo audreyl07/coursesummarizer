@@ -53,35 +53,3 @@ def append_summary_to_pdf(pdf_path, new_summary, output_pdf="summary_output.pdf"
             pdf.multi_cell(0, 10, line)
     pdf.output(output_pdf)
     print(f"Combined summary saved to {output_pdf}")
-    
-def read_text_file(filepath: str) -> str:
-    """
-    Reads and returns the content of a text file.
-    Args:
-        filepath: Path to the text file.
-    Returns:
-        The file content as a string, or an empty string if not found or error.
-    """
-    if not os.path.exists(filepath):
-        print(f"Error: The file '{filepath}' was not found.")
-        return ""
-    try:
-        with open(filepath, "r", encoding="utf-8") as file:
-            content = file.read()
-        return content
-    except IOError:
-        print(f"Error: Could not read the file '{filepath}'.")
-        return ""
-    except Exception as e:
-        print(f"Error: {e}")
-        return ""
-
-# For direct testing
-try:
-    file_path = "/Users/admin/ws-2024/coursesummarizer/COMP2401_Ch2_DataRepresentation.txt" 
-    save_path = "/Users/admin/ws-2024/coursesummarizer/COMP2401_Ch2_DataRepresentation summary.pdf"
-    texts = read_text_file(file_path)
-    print(texts)
-    append_summary_to_pdf(save_path, texts)
-except Exception as e:
-    print(f"[ERROR]: {e}")

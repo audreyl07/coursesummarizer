@@ -199,24 +199,3 @@ def extract(file_path, chunk_size=2000, chunk_overlap=20, save_loaded=False, sav
         }
     
     return texts
-
-def save_loaded_document(content: str, output_path: str, file_format: str = "txt"):
-    """
-    Save the loaded document content to a PDF or TXT file.
-    Args:
-        content: The text content to save.
-        output_path: The path to the output file.
-        file_format: 'pdf' or 'txt'. Defaults to 'txt'.
-    """
-    if file_format.lower() == "pdf":
-        from fpdf import FPDF
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.set_font("Times", size=12)
-        for line in content.split('\n'):
-            pdf.multi_cell(0, 10, line)
-        pdf.output(output_path)
-    else:
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(content)
