@@ -9,26 +9,9 @@ from pdf_manager import append_summary_to_pdf
 
 app = FastAPI()
 
-class Info(BaseModel):
-    filename: str
-
 class Item(BaseModel):
     inputfile: str
     outputfile: str | None = None
-
-
-@app.post("/items/")
-def create_item(item: Item):
-    #texts = extract(item.filename)
-    texts = extract("D:\\Github\\coursesummarizer\\documents\\DiscreteStructures.pdf")
-    print(texts)
-    # if item.price < 0:
-    #     raise HTTPException(status_code=400, detail="Price must be non-negative")
-  
-    # data = item.dict()
-    # if item.tax is not None:
-    #     data["total_price"] = item.price + item.tax
-    return texts
 
 @app.post("/extract/")
 def extract_content(item: Item):
@@ -47,20 +30,20 @@ def extract_content(item: Item):
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
-
-
-# Combined endpoint for summarizing a saved file and saving the summary to its own file
+# Combined request model for summarizing and saving
 class SummarizeAndSaveRequest(BaseModel):
-    txt_path: str
-    model: str = "llama3.1:8b"
+    file_path: str
+    model: str 
     num_clusters: int = 20
     output_file: str | None = None
+    openai_api_key: str | None = None
 
-class SummarizeAndSaveResponse(BaseModel):
+# Unified response model for all summarization endpoints
+class SummarizeResponse(BaseModel):
     summary: str
     output_file: str
 
-@app.post("/summarize_and_save/", response_model=SummarizeAndSaveResponse)
+@app.post("/summarize_and_save/", response_model=SummarizeResponse)
 def summarize_and_save_endpoint(req: SummarizeAndSaveRequest):
     try:
         from langchain_ollama import OllamaLLM
@@ -82,26 +65,15 @@ def summarize_and_save_endpoint(req: SummarizeAndSaveRequest):
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(summary)
 
-        return SummarizeAndSaveResponse(summary=summary, output_file=output_file)
+        return SummarizeResponse(summary=summary, output_file=output_file)
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_and_save_endpoint: {e}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
-# Endpoint for summarizing documents using the DeepSeek LLM model
-class SummarizeDeepSeekRequest(BaseModel):
-    file_path: str
-    model: str = "deepseek-chat"
-    num_clusters: int = 20
-    output_file: str | None = None
-    
-class SummarizeDeepSeekResponse(BaseModel):
-    summary: str
-    output_file: str
-
-@app.post("/summarize_deepseek/", response_model=SummarizeDeepSeekResponse)
-def summarize_deepseek_endpoint(req: SummarizeDeepSeekRequest):
+@app.post("/summarize_deepseek/", response_model=SummarizeResponse)
+def summarize_deepseek_endpoint(req: SummarizeAndSaveRequest):
     try:
         # Use Ollama-style initialization for DeepSeek r-1
         from langchain_ollama import OllamaLLM
@@ -123,26 +95,16 @@ def summarize_deepseek_endpoint(req: SummarizeDeepSeekRequest):
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(summary)
 
-        return SummarizeDeepSeekResponse(summary=summary, output_file=output_file)
+        return SummarizeResponse(summary=summary, output_file=output_file)
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_deepseek_endpoint: {e}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
-# Generic endpoint for summarizing documents with any LLM model
-class SummarizeLLMRequest(BaseModel):
-    file_path: str
-    model: str
-    num_clusters: int = 20
-    output_file: str | None = None
 
-class SummarizeLLMResponse(BaseModel):
-    summary: str
-    output_file: str
-
-@app.post("/summarize_llm/", response_model=SummarizeLLMResponse)
-def summarize_llm_endpoint(req: SummarizeLLMRequest):
+@app.post("/summarize_llm/", response_model=SummarizeResponse)
+def summarize_llm_endpoint(req: SummarizeAndSaveRequest):
     try:
         # Dynamically import and initialize the LLM based on the model name
         llm = None
@@ -181,32 +143,22 @@ def summarize_llm_endpoint(req: SummarizeLLMRequest):
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(summary)
 
-        return SummarizeLLMResponse(summary=summary, output_file=output_file)
+        return SummarizeResponse(summary=summary, output_file=output_file)
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_llm_endpoint: {e}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
-# Endpoint for summarizing documents using OpenAI's LLM
-class SummarizeOpenAIRequest(BaseModel):
-    file_path: str
-    openai_api_key: str
-    model: str = "gpt-4.1"	
-    num_clusters: int = 20
-    output_file: str | None = None
 
-class SummarizeOpenAIResponse(BaseModel):
-    summary: str
-    output_file: str
-
-@app.post("/summarize_openai/", response_model=SummarizeOpenAIResponse)
-def summarize_openai_endpoint(req: SummarizeOpenAIRequest):
+@app.post("/summarize_openai/", response_model=SummarizeResponse)
+def summarize_openai_endpoint(req: SummarizeAndSaveRequest):
     try:
         import os
         import openai
         os.environ["OPENAI_API_KEY"] = req.openai_api_key
         openai.api_key = req.openai_api_key
+        from summarizer import summarize_document_with_kmeans_clustering
         from langchain_huggingface import HuggingFaceEmbeddings
         embeddings = HuggingFaceEmbeddings()
 
@@ -214,17 +166,11 @@ def summarize_openai_endpoint(req: SummarizeOpenAIRequest):
         texts = extract(req.file_path)
         print(f"[DEBUG] Extracted text chunks: {len(texts)}")
 
-        # Compose the prompt for summarization
-        prompt = "Summarize the following document. Only use English and ensure all sentences are grammatically correct and well-structured.\n\n" + "\n\n".join([doc.page_content for doc in texts])
-        messages = [
-            {"role": "system", "content": "You are a helpful assistant that summarizes documents."},
-            {"role": "user", "content": prompt}
-        ]
-        response = openai.ChatCompletion.create(
-            model=req.model,
-            messages=messages
-        )
-        summary = response.choices[0].message.content
+        # Use the same summarizer logic and prompt as the main pipeline
+        # Use langchain OpenAI Chat for chat models (gpt-3.5-turbo, gpt-4, etc.)
+        from langchain_community.chat_models import ChatOpenAI
+        llm = ChatOpenAI(model=req.model, openai_api_key=req.openai_api_key)
+        summary = summarize_document_with_kmeans_clustering(texts, llm, embeddings, num_clusters=req.num_clusters)
         print(f"[DEBUG] Summary length: {len(summary)}")
 
         base_name = os.path.basename(req.file_path)
@@ -233,7 +179,7 @@ def summarize_openai_endpoint(req: SummarizeOpenAIRequest):
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(summary)
 
-        return SummarizeOpenAIResponse(summary=summary, output_file=output_file)
+        return SummarizeResponse(summary=summary, output_file=output_file)
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_openai_endpoint: {e}")
