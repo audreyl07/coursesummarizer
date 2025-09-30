@@ -144,10 +144,27 @@ class SummarizeLLMResponse(BaseModel):
 @app.post("/summarize_llm/", response_model=SummarizeLLMResponse)
 def summarize_llm_endpoint(req: SummarizeLLMRequest):
     try:
-        # Dynamically select LLM class based on model name
-        if req.model.startswith("deepseek"):
+        # Dynamically import and initialize the LLM based on the model name
+        llm = None
+        if req.model.lower().startswith("deepseek"):
             from langchain_ollama import OllamaLLM
             llm = OllamaLLM(model=req.model, temperature=0)
+        elif req.model.lower().startswith("llama"):
+            from langchain_ollama import OllamaLLM
+            llm = OllamaLLM(model=req.model, temperature=0)
+        elif req.model.lower().startswith("gpt"):
+            from langchain_community.llms import OpenAI
+            llm = OpenAI(model=req.model)
+        else:
+            # Try to import a generic LLM class by name
+            try:
+                module_name, class_name = req.model.split(":", 1) if ":" in req.model else ("langchain_ollama", "OllamaLLM")
+                module = __import__(module_name, fromlist=[class_name])
+                llm_class = getattr(module, class_name)
+                llm = llm_class(model=req.model, temperature=0)
+            except Exception as import_err:
+                raise HTTPException(status_code=400, detail=f"Could not import or initialize LLM for model '{req.model}': {import_err}")
+
         from langchain_huggingface import HuggingFaceEmbeddings
         embeddings = HuggingFaceEmbeddings()
 
@@ -168,6 +185,48 @@ def summarize_llm_endpoint(req: SummarizeLLMRequest):
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_llm_endpoint: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Endpoint for summarizing documents using OpenAI's LLM
+class SummarizeOpenAIRequest(BaseModel):
+    file_path: str
+    openai_api_key: str
+    model: str = "gpt-3.5-turbo"
+    num_clusters: int = 20
+    output_file: str | None = None
+
+class SummarizeOpenAIResponse(BaseModel):
+    summary: str
+    output_file: str
+
+@app.post("/summarize_openai/", response_model=SummarizeOpenAIResponse)
+def summarize_openai_endpoint(req: SummarizeOpenAIRequest):
+    try:
+        import os
+        os.environ["OPENAI_API_KEY"] = req.openai_api_key
+        from langchain_community.llms import OpenAI
+        from langchain_huggingface import HuggingFaceEmbeddings
+        llm = OpenAI(model=req.model, openai_api_key=req.openai_api_key)
+        embeddings = HuggingFaceEmbeddings()
+
+        print(f"[DEBUG] Requested file path: {req.file_path}")
+        texts = extract(req.file_path)
+        print(f"[DEBUG] Extracted text chunks: {len(texts)}")
+
+        summary = summarize_document_with_kmeans_clustering(texts, llm, embeddings, num_clusters=req.num_clusters)
+        print(f"[DEBUG] Summary length: {len(summary)}")
+
+        base_name = os.path.basename(req.file_path)
+        file_name_without_ext = os.path.splitext(base_name)[0]
+        output_file = req.output_file or f"{file_name_without_ext}_openai_summary.txt"
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(summary)
+
+        return SummarizeOpenAIResponse(summary=summary, output_file=output_file)
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] Exception in summarize_openai_endpoint: {e}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
