@@ -192,7 +192,7 @@ def summarize_llm_endpoint(req: SummarizeLLMRequest):
 class SummarizeOpenAIRequest(BaseModel):
     file_path: str
     openai_api_key: str
-    model: str = "gpt-3.5-turbo"
+    model: str = "gpt-4.1"	
     num_clusters: int = 20
     output_file: str | None = None
 
@@ -204,17 +204,27 @@ class SummarizeOpenAIResponse(BaseModel):
 def summarize_openai_endpoint(req: SummarizeOpenAIRequest):
     try:
         import os
+        import openai
         os.environ["OPENAI_API_KEY"] = req.openai_api_key
-        from langchain_community.llms import OpenAI
+        openai.api_key = req.openai_api_key
         from langchain_huggingface import HuggingFaceEmbeddings
-        llm = OpenAI(model=req.model, openai_api_key=req.openai_api_key)
         embeddings = HuggingFaceEmbeddings()
 
         print(f"[DEBUG] Requested file path: {req.file_path}")
         texts = extract(req.file_path)
         print(f"[DEBUG] Extracted text chunks: {len(texts)}")
 
-        summary = summarize_document_with_kmeans_clustering(texts, llm, embeddings, num_clusters=req.num_clusters)
+        # Compose the prompt for summarization
+        prompt = "Summarize the following document. Only use English and ensure all sentences are grammatically correct and well-structured.\n\n" + "\n\n".join([doc.page_content for doc in texts])
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant that summarizes documents."},
+            {"role": "user", "content": prompt}
+        ]
+        response = openai.ChatCompletion.create(
+            model=req.model,
+            messages=messages
+        )
+        summary = response.choices[0].message.content
         print(f"[DEBUG] Summary length: {len(summary)}")
 
         base_name = os.path.basename(req.file_path)
