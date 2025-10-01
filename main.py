@@ -3,49 +3,26 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
-from document_loader import extract, save_text_to_file
-from summarizer import summarize_document_with_kmeans_clustering
-from pdf_manager import append_summary_to_pdf
-from typing import Optional
+from src.document_loader import extract, save_text_to_file
+from src.summarizer import summarize_document_with_kmeans_clustering
+from src.pdf_manager import append_summary_to_pdf
 
 app = FastAPI()
 
-# Unified request model for all summarization endpoints
-class SummarizeRequest(BaseModel):
-    file_path: str
-    model: Optional[str] = None
-    num_clusters: int = 20
-    output_file: Optional[str] = None
-    openai_api_key: Optional[str] = None
+class Item(BaseModel):
+    inputfile: str
+    outputfile: str | None = None
 
-# Unified response model for all summarization endpoints
-class SummarizeResponse(BaseModel):
-    summary: str
-    output_file: str
-    
-def get_full_file_path(file_path: str, sub_directory: str = "") -> str:
-
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.dirname(current_dir)
-    sub_dir = os.path.join(parent_dir, sub_directory)
-    return os.path.join(sub_dir, file_path)
-            
 @app.post("/extract/")
-def extract_content(req: SummarizeRequest):
+def extract_content(item: Item):
     try:
-        # Construct full file path under 'documents' directory
-        full_file_path = get_full_file_path(req.file_path, "documents")
-        print(f"[DEBUG] Requested input file: {full_file_path}")
-        texts = extract(full_file_path)
-        print(f"[DEBUG] Extracted text chunks: {len(texts)}")
-        
-        base_name = os.path.basename(full_file_path)
-        file_name_without_ext = os.path.splitext(base_name)[0]
-        output_full_file_path = get_full_file_path(f"{file_name_without_ext}_deepseek_summary.txt", "output")
-        
-        print(f"OUTPUT PATH: {output_full_file_path}") 
-        data = req.dict()
-        data["full_file_path"] = full_file_path
+        print(f"[DEBUG] Requested input file: {item.inputfile}")
+        texts = extract(item.inputfile)
+        if not texts or not isinstance(texts, str):
+            raise ValueError("Extracted text is empty or not a string.")
+        print(f"[DEBUG] Extracted text length: {len(texts)}")
+        save_text_to_file(texts, item.outputfile)
+        data = item.dict()
         return data
     except Exception as e:
         import traceback
@@ -53,31 +30,42 @@ def extract_content(req: SummarizeRequest):
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
+# Combined request model for summarizing and saving
+class SummarizeAndSaveRequest(BaseModel):
+    file_path: str
+    model: str 
+    num_clusters: int = 20
+    output_file: str | None = None
+    openai_api_key: str | None = None
+
+# Unified response model for all summarization endpoints
+class SummarizeResponse(BaseModel):
+    summary: str
+    output_file: str
 
 @app.post("/summarize_and_save/", response_model=SummarizeResponse)
-def summarize_and_save_endpoint(req: SummarizeRequest):
+def summarize_and_save_endpoint(req: SummarizeAndSaveRequest):
     try:
         from langchain_ollama import OllamaLLM
         from langchain_huggingface import HuggingFaceEmbeddings
         llm = OllamaLLM(model=req.model, temperature=0)
         embeddings = HuggingFaceEmbeddings()
 
-        full_file_path = get_full_file_path(req.file_path, "documents")
-        print(f"[DEBUG] Requested input file: {full_file_path}")
-        texts = extract(full_file_path)
+        print(f"[DEBUG] Requested txt_path: {req.txt_path}")
+        texts = extract(req.txt_path)
         print(f"[DEBUG] Extracted text chunks: {len(texts)}")
 
         summary = summarize_document_with_kmeans_clustering(texts, llm, embeddings, num_clusters=req.num_clusters)
         print(f"[DEBUG] Summary length: {len(summary)}")
 
-        # Save summary to its own file        
-        base_name = os.path.basename(full_file_path)
+        # Save summary to its own file
+        base_name = os.path.basename(req.txt_path)
         file_name_without_ext = os.path.splitext(base_name)[0]
-        output_full_file_path = get_full_file_path(f"{file_name_without_ext}_summary.txt", "output")
-        with open(output_full_file_path, "w", encoding="utf-8") as f:
+        output_file = req.output_file or f"{file_name_without_ext}_summary.txt"
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(summary)
 
-        return SummarizeResponse(summary=summary, output_file=output_full_file_path)
+        return SummarizeResponse(summary=summary, output_file=output_file)
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_and_save_endpoint: {e}")
@@ -85,7 +73,7 @@ def summarize_and_save_endpoint(req: SummarizeRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/summarize_deepseek/", response_model=SummarizeResponse)
-def summarize_deepseek_endpoint(req: SummarizeRequest):
+def summarize_deepseek_endpoint(req: SummarizeAndSaveRequest):
     try:
         # Use Ollama-style initialization for DeepSeek r-1
         from langchain_ollama import OllamaLLM
@@ -93,22 +81,21 @@ def summarize_deepseek_endpoint(req: SummarizeRequest):
         llm = OllamaLLM(model="deepseek-v2", temperature=0)
         embeddings = HuggingFaceEmbeddings()
 
-        full_file_path = get_full_file_path(req.file_path, "documents")
-        print(f"[DEBUG] Requested input file: {full_file_path}")
-        texts = extract(full_file_path)
+        print(f"[DEBUG] Requested file path: {req.file_path}")
+        texts = extract(req.file_path)
         print(f"[DEBUG] Extracted text chunks: {len(texts)}")
 
         summary = summarize_document_with_kmeans_clustering(texts, llm, embeddings, num_clusters=req.num_clusters)
         print(f"[DEBUG] Summary length: {len(summary)}")
 
         # Save summary to its own file
-        base_name = os.path.basename(full_file_path)
+        base_name = os.path.basename(req.file_path)
         file_name_without_ext = os.path.splitext(base_name)[0]
-        output_full_file_path = get_full_file_path(f"{file_name_without_ext}_deepseek_summary.txt", "output")
-        with open(output_full_file_path, "w", encoding="utf-8") as f:
+        output_file = req.output_file or f"{file_name_without_ext}_deepseek_summary.txt"
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(summary)
 
-        return SummarizeResponse(summary=summary, output_file=output_full_file_path)
+        return SummarizeResponse(summary=summary, output_file=output_file)
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_deepseek_endpoint: {e}")
@@ -117,7 +104,7 @@ def summarize_deepseek_endpoint(req: SummarizeRequest):
 
 
 @app.post("/summarize_llm/", response_model=SummarizeResponse)
-def summarize_llm_endpoint(req: SummarizeRequest):
+def summarize_llm_endpoint(req: SummarizeAndSaveRequest):
     try:
         # Dynamically import and initialize the LLM based on the model name
         llm = None
@@ -143,21 +130,20 @@ def summarize_llm_endpoint(req: SummarizeRequest):
         from langchain_huggingface import HuggingFaceEmbeddings
         embeddings = HuggingFaceEmbeddings()
 
-        full_file_path = get_full_file_path(req.file_path, "documents")
-        print(f"[DEBUG] Requested input file: {full_file_path}")
-        texts = extract(full_file_path)
+        print(f"[DEBUG] Requested file path: {req.file_path}")
+        texts = extract(req.file_path)
         print(f"[DEBUG] Extracted text chunks: {len(texts)}")
 
         summary = summarize_document_with_kmeans_clustering(texts, llm, embeddings, num_clusters=req.num_clusters)
         print(f"[DEBUG] Summary length: {len(summary)}")
 
-        base_name = os.path.basename(full_file_path)
+        base_name = os.path.basename(req.file_path)
         file_name_without_ext = os.path.splitext(base_name)[0]
-        output_full_file_path = get_full_file_path(f"{file_name_without_ext}_summary.txt", "output")
-        with open(output_full_file_path, "w", encoding="utf-8") as f:
+        output_file = req.output_file or f"{file_name_without_ext}_{req.model}_summary.txt"
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(summary)
 
-        return SummarizeResponse(summary=summary, output_file=output_full_file_path)
+        return SummarizeResponse(summary=summary, output_file=output_file)
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_llm_endpoint: {e}")
@@ -166,19 +152,18 @@ def summarize_llm_endpoint(req: SummarizeRequest):
 
 
 @app.post("/summarize_openai/", response_model=SummarizeResponse)
-def summarize_openai_endpoint(req: SummarizeRequest):
+def summarize_openai_endpoint(req: SummarizeAndSaveRequest):
     try:
         import os
         import openai
         os.environ["OPENAI_API_KEY"] = req.openai_api_key
         openai.api_key = req.openai_api_key
-        from summarizer import summarize_document_with_kmeans_clustering
+        from src.summarizer import summarize_document_with_kmeans_clustering
         from langchain_huggingface import HuggingFaceEmbeddings
         embeddings = HuggingFaceEmbeddings()
 
-        full_file_path = get_full_file_path(req.file_path, "documents")
-        print(f"[DEBUG] Requested input file: {full_file_path}")
-        texts = extract(full_file_path)
+        print(f"[DEBUG] Requested file path: {req.file_path}")
+        texts = extract(req.file_path)
         print(f"[DEBUG] Extracted text chunks: {len(texts)}")
 
         # Use the same summarizer logic and prompt as the main pipeline
@@ -188,13 +173,13 @@ def summarize_openai_endpoint(req: SummarizeRequest):
         summary = summarize_document_with_kmeans_clustering(texts, llm, embeddings, num_clusters=req.num_clusters)
         print(f"[DEBUG] Summary length: {len(summary)}")
 
-        base_name = os.path.basename(full_file_path)
+        base_name = os.path.basename(req.file_path)
         file_name_without_ext = os.path.splitext(base_name)[0]
-        output_full_file_path = get_full_file_path(f"{file_name_without_ext}_openai_summary.txt", "output")
-        with open(output_full_file_path, "w", encoding="utf-8") as f:
+        output_file = req.output_file or f"{file_name_without_ext}_openai_summary.txt"
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(summary)
 
-        return SummarizeResponse(summary=summary, output_file=output_full_file_path)
+        return SummarizeResponse(summary=summary, output_file=output_file)
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_openai_endpoint: {e}")

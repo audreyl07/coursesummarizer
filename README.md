@@ -1,62 +1,121 @@
 
 
+
 # Coursework Summarizer
 
 ## Overview
 
-Coursework Summarizer is an AI-powered tool for summarizing and organizing large academic documents (PDF, TXT, DOCX). It uses LLMs and clustering to generate clear, topic-based summaries, and offers flexible options for saving and managing summary PDFs.
+
+Coursework Summarizer is an AI-powered tool for summarizing and organizing large academic documents (PDF, TXT, DOCX). It uses LLMs and k-means clustering to generate clear, topic-based summaries, and offers both a FastAPI backend and interactive terminal workflow for flexible summarization and PDF management.
 
 ---
+
 
 ## Features
 
 - Accepts PDF, TXT, and DOCX files for summarization.
-- Extracts, chunks, and clusters document content using HuggingFace embeddings.
-- Summarizes each cluster using an LLM (Ollama) with a custom prompt that preserves code and image/graph context.
-- Interactive terminal workflow: choose to create a new PDF, append to an existing PDF, or skip saving.
-- Optionally delete generated summaries or clear them from the terminal.
-- Prevents duplicate summaries and repeated content.
+- Extracts, chunks, and clusters document content using HuggingFace embeddings and k-means clustering.
+- Summarizes each cluster using an LLM (Ollama, DeepSeek, OpenAI GPT, or custom) with a unified, detailed prompt that preserves code, math, and image/graph context.
+- FastAPI backend with endpoints for different LLMs and summarization workflows.
+- Interactive terminal workflow for manual summarization and PDF management.
+- Flexible output: save summaries to custom output directories, append to PDFs, or return via API.
+- Robust error handling and debug logging.
 
 ---
 
-## Usage (Terminal)
 
-Run the summarizer interactively:
+## Usage
+
+### FastAPI Server
+
+Start the API server:
+
+```sh
+python -m uvicorn src.main:app --reload
+```
+
+### API Endpoints
+
+- `POST /extract/` — Extract and chunk document text.
+- `POST /summarize_and_save/` — Summarize using Ollama LLM and save output.
+- `POST /summarize_deepseek/` — Summarize using DeepSeek LLM.
+- `POST /summarize_llm/` — Summarize using a custom LLM (Ollama, DeepSeek, Llama, GPT, etc.).
+- `POST /summarize_openai/` — Summarize using OpenAI GPT chat models (e.g., gpt-3.5-turbo, gpt-4).
+
+All endpoints accept a JSON body with:
+
+```
+{
+	"file_path": "<relative/path/to/document>",
+	"model": "<model_name>",
+	"num_clusters": 20,
+	"output_file": "<optional/output/path>",
+	"openai_api_key": "<your-openai-key>"
+}
+```
+
+**Example (OpenAI endpoint):**
+
+```sh
+curl -X POST "http://localhost:8000/summarize_openai/" \
+	-H "Content-Type: application/json" \
+	-d '{
+		"file_path": "COMP2401_Ch1_SystemsProgramming.pdf",
+		"model": "gpt-3.5-turbo",
+		"num_clusters": 20,
+		"openai_api_key": "sk-..."
+	}'
+```
+
+### Terminal Workflow
+
+Run the interactive summarizer:
 
 ```sh
 python original.py
 ```
 
-**Workflow:**
+---
 
-1. Enter the path to a PDF, TXT, or DOCX file when prompted.
-2. Review the summary in the terminal (optionally clear it).
-3. Choose where to save the summary:
-	- Create a new PDF (with your chosen filename)
-	- Append to the default combined PDF
-	- Append to another existing PDF
-	- Do not save the summary
-4. If you create a new PDF, you can immediately delete it if not needed.
-5. Type `stop` to end the session.
 
 ---
 
-**Key Functions:**
+## Workflow & Architecture
 
-- `extract(file_path)`: Extracts and splits document text, extracts code blocks and image/graph references.
-- `summarize_document_with_kmeans_clustering(file, llm, embeddings)`: Clusters and summarizes a document, preserving code and image/graph context.
-- `append_summary_to_pdf(pdf_path, new_summary, output_pdf)`: Appends a new summary to an existing PDF, avoiding repetition.
-- `get_title(text)`: Extracts the first non-empty line as the document title.
+### File Structure
+
+- `src/main.py` — FastAPI server with all endpoints and workflow logic.
+- `summarizer.py` — Core summarization logic using k-means clustering and unified prompt.
+- `document_loader.py` — Document extraction, chunking, and metadata enrichment.
+- `pdf_manager.py` — PDF export and summary appending.
+- `original.py` — (Optional) Interactive terminal workflow.
+- `documents/` — Input files (PDF, TXT, DOCX, etc.).
+- `output/` — Output summaries and PDFs.
+
+### Summarization Logic
+
+1. **Extraction:** Document is loaded and split into chunks, with code blocks and image/graph references extracted as metadata.
+2. **Clustering:** Chunks are embedded using HuggingFace embeddings and grouped via k-means clustering.
+3. **Summarization:** Each cluster is summarized using the selected LLM (Ollama, DeepSeek, OpenAI, etc.) with a detailed prompt that:
+	- Preserves code formatting and provides explanations
+	- Describes math, images, and graphs
+	- Synthesizes main ideas in clear English
+4. **Output:** Summary is saved to the output directory or returned via API. Optionally, summaries can be appended to PDFs.
 
 ---
+
+---
+
 
 ## Customization
 
-- **Chunk Size & Clusters:** Chunk size and number of clusters are set in the code for large documents, but can be easily exposed as user inputs for further tuning.
-- **Supported Formats:** PDF, TXT, DOCX (add more by extending the `extract` function).
-- **Prompt:** The summarization prompt is designed to preserve code formatting and describe images/graphs.
+- **Chunk Size & Clusters:** Chunk size and number of clusters are configurable via API request or code.
+- **Supported Formats:** PDF, TXT, DOCX (extend `extract` in `document_loader.py` for more).
+- **Prompt:** The summarization prompt is unified and designed to preserve code, math, and image/graph context.
+- **LLM Selection:** Use any supported LLM by specifying the model name in the API request.
 
 ---
+
 
 ## Example Terminal Session
 
@@ -79,19 +138,22 @@ Do you want to delete the summary PDF 'mytextbook_summary.pdf'? (y/n): n
 Do you want to clear the newly summarized material from the terminal? (y/n): n
 ```
 
+
 ## Dependencies
 
 - Python 3.8+
+- [FastAPI](https://fastapi.tiangolo.com/)
 - [LangChain](https://github.com/langchain-ai/langchain)
 - [Ollama](https://github.com/ollama/ollama)
 - [FPDF](https://github.com/reingart/pyfpdf)
 - [PyPDFLoader](https://github.com/langchain-ai/langchain)
 - [HuggingFace Transformers](https://github.com/huggingface/transformers)
+- [Uvicorn](https://www.uvicorn.org/) (for running FastAPI)
 
 Install all dependencies with:
 
 ```sh
-pip install langchain langchain-community langchain-ollama langchain-huggingface fpdf streamlit requests pdfplumber
+pip install fastapi uvicorn langchain langchain-community langchain-ollama langchain-huggingface fpdf streamlit requests pdfplumber
 ```
 
 ---
