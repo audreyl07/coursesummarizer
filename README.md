@@ -98,10 +98,8 @@ curl -X POST "http://localhost:8000/summarize_openai/" \
 .
 ├── src/
 │   └── main.py
-├── summarizer.py
-├── document_loader.py
-├── pdf_manager.py
-├── original.py
+|	└── summarizer.py
+│   └── document_loader.py
 ├── documents/         # input files
 ├── output/            # output summaries & PDFs
 ├── requirements.txt
