@@ -10,20 +10,42 @@ Coursework Summarizer is an AI-powered tool for summarizing and organizing large
 
 ---
 
-
 ## Features
-
-- Accepts PDF, TXT, and DOCX files for summarization.
-- Extracts, chunks, and clusters document content using HuggingFace embeddings and k-means clustering.
-- Summarizes each cluster using an LLM (Ollama, DeepSeek, OpenAI GPT, or custom) with a unified, detailed prompt that preserves code, math, and image/graph context.
-- FastAPI backend with endpoints for different LLMs and summarization workflows.
-- Interactive terminal workflow for manual summarization and PDF management.
-- Flexible output: save summaries to custom output directories, append to PDFs, or return via API.
-- Robust error handling and debug logging.
+- Accepts PDF, TXT, and DOCX input for summarization.
+- Extracts, chunks, and clusters content using embeddings + k-means clustering.
+- Generates cluster-level summaries with a unified prompt tuned to preserve:
+	- Code blocks
+	- Mathematical notation
+	- Image / graph references and descriptions
+- Flexible backend via FastAPI, exposing various summarization endpoints.
+- Interactive terminal workflow for local summarization and file management.
+- Supports outputting summaries to file, appending to PDFs, or returning via API.
+- Robust error handling and logging for debugging & traceability.
 
 ---
+## Getting Started
+### Prerequisites
+- Python 3.8+
+- (Optional) API keys for models such as OpenAI
+- System dependencies for PDFs / document processing (e.g. poppler, etc.)
 
+### Installation
 
+1. Clone the repo:
+```sh 
+Python git clone https://github.com/audreyl07/coursesummarizer.git
+cd coursesummarizer
+```
+2. (Optional) Create and activate a virtual environment:
+```sh
+Python python -m venv venv
+source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+```
+
+3. Install required dependencies:
+```sh 
+Python pip install -r requirements.txt
+```
 ## Usage
 
 ### FastAPI Server
@@ -67,38 +89,37 @@ curl -X POST "http://localhost:8000/summarize_openai/" \
 	}'
 ```
 
-### Terminal Workflow
-
-Run the interactive summarizer:
-
-```sh
-python original.py
-```
-
 ---
 
 ## Workflow & Architecture
 
 ### File Structure
+```
+.
+├── src/
+│   └── main.py
+├── summarizer.py
+├── document_loader.py
+├── pdf_manager.py
+├── original.py
+├── documents/         # input files
+├── output/            # output summaries & PDFs
+├── requirements.txt
+└── .env
+```
 
 - `src/main.py` — FastAPI server with all endpoints and workflow logic.
 - `summarizer.py` — Core summarization logic using k-means clustering and unified prompt.
 - `document_loader.py` — Document extraction, chunking, and metadata enrichment.
-- `pdf_manager.py` — PDF export and summary appending.
-- `original.py` — (Optional) Interactive terminal workflow.
 - `documents/` — Input files (PDF, TXT, DOCX, etc.).
 - `output/` — Output summaries and PDFs.
 
 ### Summarization Logic
 
-1. **Extraction:** Document is loaded and split into chunks, with code blocks and image/graph references extracted as metadata.
-2. **Clustering:** Chunks are embedded using HuggingFace embeddings and grouped via k-means clustering.
-3. **Summarization:** Each cluster is summarized using the selected LLM (Ollama, DeepSeek, OpenAI, etc.) with a detailed prompt that:
-	- Preserves code formatting and provides explanations
-	- Describes math, images, and graphs
-	- Synthesizes main ideas in clear English
-4. **Output:** Summary is saved to the output directory or returned via API. Optionally, summaries can be appended to PDFs.
-
+1. Extraction & Chunking — The document is parsed, text is split into chunks (keeping track of structure: code, math, image references).
+2. Embedding + Clustering — Each chunk is converted to embeddings (via HuggingFace or other embedding models) and clustered using k-means.
+3. Summarization — For each cluster, the selected LLM is invoked using a carefully crafted prompt that ensures preservation of special formatting (code, math) and references to images / graphs.
+4. Output — The summary is either returned via API or saved/appended to file as specified.
 ---
 
 ## Customization
