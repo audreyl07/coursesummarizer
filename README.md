@@ -77,9 +77,6 @@ python original.py
 
 ---
 
-
----
-
 ## Workflow & Architecture
 
 ### File Structure
@@ -104,9 +101,6 @@ python original.py
 
 ---
 
----
-
-
 ## Customization
 
 - **Chunk Size & Clusters:** Chunk size and number of clusters are configurable via API request or code.
@@ -115,29 +109,6 @@ python original.py
 - **LLM Selection:** Use any supported LLM by specifying the model name in the API request.
 
 ---
-
-
-## Example Terminal Session
-
-```
-Enter the path to a PDF, or TXT to summarize and append (or type 'stop' to finish): mytextbook.pdf
-
-===== DOCUMENT SUMMARY =====
-...summary output...
-============================
-
-Where would you like to save this summary?
-1. Create a new PDF for this summary
-2. Append to the default combined PDF
-3. Append to another existing PDF
-4. Do not save this summary
-Enter 1, 2, 3, or 4: 1
-Enter the filename for the summary PDF (with .pdf extension): mytextbook_summary.pdf
-Summary saved to mytextbook_summary.pdf
-Do you want to delete the summary PDF 'mytextbook_summary.pdf'? (y/n): n
-Do you want to clear the newly summarized material from the terminal? (y/n): n
-```
-
 
 ## Dependencies
 

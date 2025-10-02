@@ -33,6 +33,7 @@ def get_full_file_path(file_path: str, sub_directory: str = "") -> str:
 @app.post("/extract/")
 def extract_content(req: SummarizeRequest):
     try:
+        print(req)
         # Construct full file path under 'documents' directory
         full_file_path = get_full_file_path(req.file_path, "documents")
         print(f"[DEBUG] Requested input file: {full_file_path}")
@@ -53,6 +54,31 @@ def extract_content(req: SummarizeRequest):
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
+def summarize_and_save_core(
+    req: SummarizeRequest,
+    llm,
+    embeddings,
+    summary_suffix: str = "summary"
+) -> SummarizeResponse:
+    full_file_path = get_full_file_path(req.file_path, "documents")
+    print(f"[DEBUG] Requested input file: {full_file_path}")
+    texts = extract(full_file_path)
+    print(f"[DEBUG] Extracted text chunks: {len(texts)}")
+
+    summary = summarize_document_with_kmeans_clustering(
+        texts, llm, embeddings, num_clusters=req.num_clusters
+    )
+    print(f"[DEBUG] Summary length: {len(summary)}")
+
+    base_name = os.path.basename(full_file_path)
+    file_name_without_ext = os.path.splitext(base_name)[0]
+    output_full_file_path = get_full_file_path(
+        f"{file_name_without_ext}_{summary_suffix}.txt", "output"
+    )
+    with open(output_full_file_path, "w", encoding="utf-8") as f:
+        f.write(summary)
+
+    return SummarizeResponse(summary=summary, output_file=output_full_file_path)
 
 @app.post("/summarize_and_save/", response_model=SummarizeResponse)
 def summarize_and_save_endpoint(req: SummarizeRequest):
@@ -61,23 +87,7 @@ def summarize_and_save_endpoint(req: SummarizeRequest):
         from langchain_huggingface import HuggingFaceEmbeddings
         llm = OllamaLLM(model=req.model, temperature=0)
         embeddings = HuggingFaceEmbeddings()
-
-        full_file_path = get_full_file_path(req.file_path, "documents")
-        print(f"[DEBUG] Requested input file: {full_file_path}")
-        texts = extract(full_file_path)
-        print(f"[DEBUG] Extracted text chunks: {len(texts)}")
-
-        summary = summarize_document_with_kmeans_clustering(texts, llm, embeddings, num_clusters=req.num_clusters)
-        print(f"[DEBUG] Summary length: {len(summary)}")
-
-        # Save summary to its own file        
-        base_name = os.path.basename(full_file_path)
-        file_name_without_ext = os.path.splitext(base_name)[0]
-        output_full_file_path = get_full_file_path(f"{file_name_without_ext}_summary.txt", "output")
-        with open(output_full_file_path, "w", encoding="utf-8") as f:
-            f.write(summary)
-
-        return SummarizeResponse(summary=summary, output_file=output_full_file_path)
+        return summarize_and_save_core(req, llm, embeddings, summary_suffix="summary")
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_and_save_endpoint: {e}")
@@ -92,29 +102,12 @@ def summarize_deepseek_endpoint(req: SummarizeRequest):
         from langchain_huggingface import HuggingFaceEmbeddings
         llm = OllamaLLM(model="deepseek-v2", temperature=0)
         embeddings = HuggingFaceEmbeddings()
-
-        full_file_path = get_full_file_path(req.file_path, "documents")
-        print(f"[DEBUG] Requested input file: {full_file_path}")
-        texts = extract(full_file_path)
-        print(f"[DEBUG] Extracted text chunks: {len(texts)}")
-
-        summary = summarize_document_with_kmeans_clustering(texts, llm, embeddings, num_clusters=req.num_clusters)
-        print(f"[DEBUG] Summary length: {len(summary)}")
-
-        # Save summary to its own file
-        base_name = os.path.basename(full_file_path)
-        file_name_without_ext = os.path.splitext(base_name)[0]
-        output_full_file_path = get_full_file_path(f"{file_name_without_ext}_deepseek_summary.txt", "output")
-        with open(output_full_file_path, "w", encoding="utf-8") as f:
-            f.write(summary)
-
-        return SummarizeResponse(summary=summary, output_file=output_full_file_path)
+        return summarize_and_save_core(req, llm, embeddings, summary_suffix="summary")
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_deepseek_endpoint: {e}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.post("/summarize_llm/", response_model=SummarizeResponse)
 def summarize_llm_endpoint(req: SummarizeRequest):
@@ -142,28 +135,12 @@ def summarize_llm_endpoint(req: SummarizeRequest):
 
         from langchain_huggingface import HuggingFaceEmbeddings
         embeddings = HuggingFaceEmbeddings()
-
-        full_file_path = get_full_file_path(req.file_path, "documents")
-        print(f"[DEBUG] Requested input file: {full_file_path}")
-        texts = extract(full_file_path)
-        print(f"[DEBUG] Extracted text chunks: {len(texts)}")
-
-        summary = summarize_document_with_kmeans_clustering(texts, llm, embeddings, num_clusters=req.num_clusters)
-        print(f"[DEBUG] Summary length: {len(summary)}")
-
-        base_name = os.path.basename(full_file_path)
-        file_name_without_ext = os.path.splitext(base_name)[0]
-        output_full_file_path = get_full_file_path(f"{file_name_without_ext}_summary.txt", "output")
-        with open(output_full_file_path, "w", encoding="utf-8") as f:
-            f.write(summary)
-
-        return SummarizeResponse(summary=summary, output_file=output_full_file_path)
+        return summarize_and_save_core(req, llm, embeddings, summary_suffix="summary")
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_llm_endpoint: {e}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.post("/summarize_openai/", response_model=SummarizeResponse)
 def summarize_openai_endpoint(req: SummarizeRequest):
@@ -172,29 +149,11 @@ def summarize_openai_endpoint(req: SummarizeRequest):
         import openai
         os.environ["OPENAI_API_KEY"] = req.openai_api_key
         openai.api_key = req.openai_api_key
-        from summarizer import summarize_document_with_kmeans_clustering
         from langchain_huggingface import HuggingFaceEmbeddings
-        embeddings = HuggingFaceEmbeddings()
-
-        full_file_path = get_full_file_path(req.file_path, "documents")
-        print(f"[DEBUG] Requested input file: {full_file_path}")
-        texts = extract(full_file_path)
-        print(f"[DEBUG] Extracted text chunks: {len(texts)}")
-
-        # Use the same summarizer logic and prompt as the main pipeline
-        # Use langchain OpenAI Chat for chat models (gpt-3.5-turbo, gpt-4, etc.)
         from langchain_community.chat_models import ChatOpenAI
         llm = ChatOpenAI(model=req.model, openai_api_key=req.openai_api_key)
-        summary = summarize_document_with_kmeans_clustering(texts, llm, embeddings, num_clusters=req.num_clusters)
-        print(f"[DEBUG] Summary length: {len(summary)}")
-
-        base_name = os.path.basename(full_file_path)
-        file_name_without_ext = os.path.splitext(base_name)[0]
-        output_full_file_path = get_full_file_path(f"{file_name_without_ext}_openai_summary.txt", "output")
-        with open(output_full_file_path, "w", encoding="utf-8") as f:
-            f.write(summary)
-
-        return SummarizeResponse(summary=summary, output_file=output_full_file_path)
+        embeddings = HuggingFaceEmbeddings()
+        return summarize_and_save_core(req, llm, embeddings, summary_suffix="summary")
     except Exception as e:
         import traceback
         print(f"[ERROR] Exception in summarize_openai_endpoint: {e}")
